@@ -1,66 +1,83 @@
 document.addEventListener('DOMContentLoaded', function() {
     let recognition;
     let listening = false;
+    let startTimestamp;
+
+    const button = document.getElementById('speakButton');
+    const listeningIndicator = document.getElementById('listeningIndicator');
+    const microphoneIcon = document.getElementById('microphoneIcon');
+    const transcription = document.getElementById('transcription'); // Get the transcription display element
 
     const startRecognition = () => {
-        recognition = new webkitSpeechRecognition();
-        recognition.continuous = false; // Consider true if you want it to keep listening until mouseup
-        recognition.interimResults = false;
-
-        recognition.onstart = function() {
-            document.getElementById('listeningIndicator').style.display = 'block';
-            document.getElementById('microphoneIcon').style.filter = 'invert(20%) sepia(100%) saturate(7500%) hue-rotate(0deg) brightness(100%) contrast(101%)';
+        if ('webkitSpeechRecognition' in window) {
             listening = true;
-        };
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
 
-        recognition.onresult = function(event) {
-            const transcript = event.results[0][0].transcript;
-            speak(transcript);
-        };
+            recognition.onstart = function() {
+                listeningIndicator.style.display = 'block';
+                microphoneIcon.style.filter = 'invert(20%) sepia(100%) saturate(7500%) hue-rotate(0deg) brightness(100%) contrast(101%)';
+                transcription.textContent = ''; // Clear previous transcription
+            };
 
-        recognition.onerror = function(event) {
-            console.error('Speech recognition error', event.error);
-        };
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                transcription.textContent = transcript; // Display the transcribed text
+                speak(transcript);
+            };
 
-        recognition.onend = function() {
-            document.getElementById('listeningIndicator').style.display = 'none';
-            document.getElementById('microphoneIcon').style.filter = '';
-            listening = false;
-        };
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error', event.error);
+                resetState();
+            };
 
-        recognition.start();
+            recognition.onend = function() {
+                resetState();
+            };
+
+            recognition.start();
+        } else {
+            alert('Your browser does not support speech recognition.');
+        }
     };
 
     const stopRecognition = () => {
-        if (recognition) {
+        if (recognition && listening) {
             recognition.stop();
+            listening = false;
         }
+    };
+
+    const resetState = () => {
+        listeningIndicator.style.display = 'none';
+        microphoneIcon.style.filter = '';
+        listening = false;
     };
 
     const speak = (text) => {
         let utterance = new SpeechSynthesisUtterance(text);
         window.speechSynthesis.speak(utterance);
-        setTimeout(() => {
-            window.speechSynthesis.cancel(); // Optionally, stop speaking after 2 seconds
-        }, 2000);
     };
 
-    const button = document.getElementById('speakButton');
-
-    button.addEventListener('mousedown', function() {
-        if (!listening && 'webkitSpeechRecognition' in window) {
+    const handleStart = (event) => {
+        event.preventDefault();
+        if (!listening) {
+            startTimestamp = event.timeStamp;
             startRecognition();
-        } else {
-            alert('Your browser does not support speech recognition.');
         }
-    }, false);
+    };
 
-    button.addEventListener('mouseup', function() {
-        stopRecognition();
-    });
+    const handleEnd = (event) => {
+        event.preventDefault();
+        if (listening && (event.timeStamp - startTimestamp > 100)) {
+            stopRecognition();
+        }
+    };
 
-    // Optional: Also consider stopping when the mouse leaves the button while pressed.
-    button.addEventListener('mouseleave', function() {
-        stopRecognition();
-    });
+    button.addEventListener('mousedown', handleStart, false);
+    button.addEventListener('mouseup', handleEnd, false);
+    button.addEventListener('touchstart', handleStart, false);
+    button.addEventListener('touchend', handleEnd, false);
+    button.addEventListener('mouseleave', stopRecognition, false);
 });

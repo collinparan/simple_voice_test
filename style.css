@@ -24,6 +24,6 @@ button {
 }
 
 #microphoneIcon {
-    width: 400px; /* Adjust as necessary */
+    height: 150px; /* Adjust as necessary */
     transition: color 0.3s;
 }
