@@ -1,0 +1,29 @@
+body, html {
+    height: 100%;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: Arial, sans-serif;
+}
+
+#container {
+    text-align: center;
+}
+
+#listeningIndicator {
+    display: none;
+    margin-bottom: 20px;
+}
+
+button {
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    outline: none;
+}
+
+#microphoneIcon {
+    width: 400px; /* Adjust as necessary */
+    transition: color 0.3s;
+}
