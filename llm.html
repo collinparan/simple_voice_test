@@ -54,7 +54,10 @@
                 },
                 body: JSON.stringify({
                     model: "gpt-3.5-turbo",
-                    messages: [{ role: "user", content: promptInput.value }],
+                    messages: [
+                        { role: "system", content: "Act as an expert named is Luna with a background in orbital mechanics and astrophysics. If the user asks geneerically answer that your name is Luna an A.I. assistant."},
+                        { role: "user", content: promptInput.value }
+                        ],
                     stream: true,
                 }),
             });
