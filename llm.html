@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Streaming API Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+        }
+        input, button, p {
+            margin-top: 10px;
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .listening {
+            background-color: red; /* Example: Change button background to red when listening */
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <input id="promptInput" type="text" placeholder="Enter your prompt here...">
+        <button id="generateBtn">Submit</button>
+        <button id="speakButton">🎤</button> <!-- Microphone button -->
+        <p id="resultText"></p>
+    </div>
+
+<script>
+    const API_URL = "https://api.openai.com/v1/chat/completions";
+    const urlParams = new URLSearchParams(window.location.search);
+    const API_KEY = urlParams.get('api_key');
+
+    const promptInput = document.getElementById("promptInput");
+    const generateBtn = document.getElementById("generateBtn");
+    const speakButton = document.getElementById("speakButton");
+    const resultText = document.getElementById("resultText");
+
+    const generate = async () => {
+        try {
+            resultText.innerHTML = ""; // Clear previous results
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${API_KEY}`,
+                },
+                body: JSON.stringify({
+                    model: "gpt-3.5-turbo",
+                    messages: [{ role: "user", content: promptInput.value }],
+                    stream: true,
+                }),
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let buffer = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                if (chunk.trim() === "[DONE]") {
+                    console.log("Stream ended.");
+                    break;
+                }
+                buffer += chunk;
+
+                while (buffer.includes("\n")) {
+                    const splitIndex = buffer.indexOf("\n");
+                    const potentialJson = buffer.slice(0, splitIndex).trim();
+                    buffer = buffer.slice(splitIndex + 1);
+
+                    if (potentialJson.startsWith("data: ")) {
+                        const jsonStr = potentialJson.substring(5);
+                        try {
+                            const json = JSON.parse(jsonStr);
+                            console.log(json);
+                            if (json.choices && json.choices[0].delta && json.choices[0].delta.content) {
+                                resultText.innerHTML += json.choices[0].delta.content + " ";
+                            }
+                        } catch (e) {
+                            console.error('Error parsing JSON:', e, potentialJson);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            resultText.innerText = "Error occurred while generating.";
+        }
+    };
+
+    generateBtn.addEventListener("click", generate);
+
+    // Speech recognition setup
+    document.addEventListener('DOMContentLoaded', function() {
+        let recognition;
+        const startRecognition = () => {
+            if ('webkitSpeechRecognition' in window) {
+                recognition = new webkitSpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+
+                recognition.onstart = () => {
+                    speakButton.classList.add('listening');
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    promptInput.value = transcript;
+                    generate(); // Trigger text generation after receiving voice input
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error', event.error);
+                    speakButton.classList.remove('listening');
+                };
+
+                recognition.onend = () => {
+                    speakButton.classList.remove('listening');
+                };
+
+                recognition.start();
+            } else {
+                alert('Your browser does not support speech recognition. Please try Chrome or Edge.');
+            }
+        };
+
+        speakButton.addEventListener('click', () => {
+            if (recognition && recognition.state === 'active') {
+                recognition.stop();
+            } else {
+                startRecognition();
+            }
+        });
+    });
+</script>
+
+
+
+</body>
+</html>
