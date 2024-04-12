@@ -43,6 +43,11 @@
     const speakButton = document.getElementById("speakButton");
     const resultText = document.getElementById("resultText");
 
+    const speakText = (text) => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        window.speechSynthesis.speak(utterance);
+    };
+
     const generate = async () => {
         try {
             resultText.innerHTML = ""; // Clear previous results
@@ -88,6 +93,7 @@
                             console.log(json);
                             if (json.choices && json.choices[0].delta && json.choices[0].delta.content) {
                                 resultText.innerHTML += json.choices[0].delta.content + " ";
+                                speakText(content); // Speak out the content received
                             }
                         } catch (e) {
                             console.error('Error parsing JSON:', e, potentialJson);
