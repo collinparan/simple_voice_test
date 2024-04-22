@@ -28,6 +28,7 @@
 <body>
     <div class="container">
         <input id="promptInput" type="text" placeholder="Enter your prompt here...">
+        <select id="voiceSelection"></select>
         <button id="generateBtn">Submit</button>
         <button id="speakButton">🎤</button> <!-- Microphone button -->
         <p id="resultText"></p>
@@ -43,14 +44,38 @@
     const speakButton = document.getElementById("speakButton");
     const resultText = document.getElementById("resultText");
 
+    let voices =[];
+
     const speakText = (text) => {
         const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Set the rate of speech, where 1 is the default, 0.1 is slowest, and 10 is fastest
+        utterance.rate = 1.2; // Example: Normal speed
+        // Set the pitch of speech, where 0.1 is lowest and 2 is highest (1 is the default)
+        utterance.pitch = 1; // Example: Normal pitch
+
+        const selectedVoiceName = document.getElementById("voiceSelection").selectedOptions[0].getAttribute('data-name');
+        utterance.voice = voices.find(voice => voice.name === selectedVoiceName);
+        
+        // // Set voice style to "Google US English"
+        // // Note: The voice must be available on the user's system
+        // const voices = window.speechSynthesis.getVoices();
+        // console.log(voices)
+        // const googleUSEnglishVoice = voices.find(voice => voice.name === "Google US English" && voice.lang === "en-US");
+        // if (googleUSEnglishVoice) {
+        //     utterance.voice = googleUSEnglishVoice;
+        // } else {
+        //     console.warn("Google US English voice not found. Using default voice.");
+        // }
+
         window.speechSynthesis.speak(utterance);
     };
+
 
     const generate = async () => {
         try {
             resultText.innerHTML = ""; // Clear previous results
+            completeTextOnly = "";
             const response = await fetch(API_URL, {
                 method: "POST",
                 headers: {
@@ -92,8 +117,9 @@
                             const json = JSON.parse(jsonStr);
                             console.log(json);
                             if (json.choices && json.choices[0].delta && json.choices[0].delta.content) {
-                                resultText.innerHTML += json.choices[0].delta.content + " ";
-                                speakText(content); // Speak out the content received
+                                const content = json.choices[0].delta.content;
+                                resultText.innerHTML += content;
+                                completeTextOnly += content;
                             }
                         } catch (e) {
                             console.error('Error parsing JSON:', e, potentialJson);
@@ -101,6 +127,8 @@
                     }
                 }
             }
+
+        speakText(completeTextOnly); // Speak out the content received
         } catch (error) {
             console.error("Error:", error);
             resultText.innerText = "Error occurred while generating.";
@@ -110,7 +138,23 @@
     generateBtn.addEventListener("click", generate);
 
     // Speech recognition setup
-    document.addEventListener('DOMContentLoaded', function() {
+    // This function now correctly waits for voices to be loaded
+    function populateVoiceList() {
+        const voiceSelect = document.getElementById("voiceSelection");
+        voiceSelect.innerHTML = ''; // Clear existing options first
+
+        voices = window.speechSynthesis.getVoices().filter(voice => voice.lang.includes('en'));
+
+        voices.forEach(voice => {
+            let option = document.createElement('option');
+            option.textContent = `${voice.name} (${voice.lang})`;
+            option.setAttribute('data-name', voice.name);
+            voiceSelect.appendChild(option);
+        });
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {   
+        populateVoiceList();     
         let recognition;
         const startRecognition = () => {
             if ('webkitSpeechRecognition' in window) {
@@ -143,6 +187,13 @@
             }
         };
 
+        
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        } else {
+            populateVoiceList(); // Directly call if `onvoiceschanged` isn't supported
+        }
+
         speakButton.addEventListener('click', () => {
             if (recognition && recognition.state === 'active') {
                 recognition.stop();
@@ -152,8 +203,6 @@
         });
     });
 </script>
-
-
 
 </body>
 </html>
